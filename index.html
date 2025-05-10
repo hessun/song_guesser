@@ -117,14 +117,18 @@
 
   <script>
   // === Configuration ===
-  const playlistIds = [ '6122724024',
-'11923826081',
-'11404387184',
-'8346956262' ];
+  const playlistIds = [
+  '6122724024',
+  '11923826081',
+  '11404387184',
+  '8346956262' 
+  ];
   const deezerBase = 'https://api.deezer.com/playlist/';
 
   let allTracks = [];
+  let pool = [];
   let currentTrack = null;
+
   const audio = document.getElementById('audio');
   const startBtn = document.getElementById('startBtn');
   const mainControls = document.getElementById('mainControls');
@@ -153,7 +157,8 @@
     try {
       const lists = await Promise.all(playlistIds.map(loadPlaylistById));
       allTracks = lists.flat().filter(t => t.preview);
-      if (!allTracks.length) { infoDiv.textContent = 'No playable tracks found.'; return; }
+      pool = [...allTracks];
+      if (!pool.length) { infoDiv.textContent = 'No playable tracks found.'; return; }
       infoDiv.textContent = 'Loaded!';
       mainControls.style.display = 'block';
       hintBtn.style.display = 'flex';
@@ -164,7 +169,14 @@
   });
 
   function prepareRound() {
-    currentTrack = allTracks[Math.floor(Math.random()*allTracks.length)];
+    if (pool.length === 0) {
+      // reset pool or end
+      pool = [...allTracks];
+      infoDiv.textContent = 'Restarting playlist (no repeats).';
+    }
+    const idx = Math.floor(Math.random() * pool.length);
+    currentTrack = pool.splice(idx, 1)[0];
+
     playBtn.disabled = false;
     hintBtn.disabled = false;
     revealBtn.disabled = true;
