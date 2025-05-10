@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Guess Quiz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #fff;
+    }
+    #app {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.37);
+      padding: 2rem;
+      max-width: 360px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      font-weight: 700;
+      font-size: 1.8rem;
+    }
+    #controls {
+      margin-top: 1rem;
+    }
+    #mainControls button, #hintBtn {
+      display: block;
+      width: 100%;
+      margin: 0.5rem 0;
+    }
+    #mainControls {
+      display: none;
+    }
+    #hintBtn {
+      font-size: 1.5rem;
+      background: none;
+      color: #ffeb3b;
+      border: 2px solid #ffeb3b;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      margin: 1rem auto 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #hintBtn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    #hintBtn:hover:not(:disabled) {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    button.general {
+      background: linear-gradient(135deg, #6a3093, #a044ff);
+      border: none;
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button.general:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button.general:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    #info {
+      margin-top: 1rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      min-height: 1.2em;
+    }
+    #cover {
+      margin-top: 1rem;
+      max-width: 100%;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Guess the Song!</h1>
+    <audio id="audio" preload="auto"></audio>
+    <div id="controls">
+      <button id="startBtn" class="general">Start Quiz</button>
+      <div id="mainControls">
+        <button id="playBtn" class="general" disabled>Play 1s Preview</button>
+        <button id="revealBtn" class="general" disabled>Reveal</button>
+        <button id="nextBtn" class="general" disabled>Next</button>
+      </div>
+      <button id="hintBtn" disabled title="Hint (2s)">💡</button>
+    </div>
+    <div id="info"></div>
+    <img id="cover" alt="Album Cover">
+  </div>
+
+  <script>
+  // === Configuration ===
+  const playlistIds = [ '6122724024',
+'11923826081',
+'11404387184',
+'8346956262' ];
+  const deezerBase = 'https://api.deezer.com/playlist/';
+
+  let allTracks = [];
+  let currentTrack = null;
+  const audio = document.getElementById('audio');
+  const startBtn = document.getElementById('startBtn');
+  const mainControls = document.getElementById('mainControls');
+  const playBtn = document.getElementById('playBtn');
+  const hintBtn = document.getElementById('hintBtn');
+  const revealBtn = document.getElementById('revealBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const infoDiv = document.getElementById('info');
+  const coverImg = document.getElementById('cover');
+
+  function loadPlaylistById(id) {
+    const url = `${deezerBase}${id}/tracks`;
+    return new Promise((resolve, reject) => {
+      const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2);
+      window[callbackName] = data => { document.body.removeChild(script); delete window[callbackName]; resolve(data.data); };
+      const script = document.createElement('script');
+      script.src = `${url}?output=jsonp&callback=${callbackName}`;
+      script.onerror = () => reject(new Error('JSONP load error'));
+      document.body.appendChild(script);
+    });
+  }
+
+  startBtn.addEventListener('click', async () => {
+    startBtn.style.display = 'none';
+    infoDiv.textContent = 'Loading tracks...';
+    try {
+      const lists = await Promise.all(playlistIds.map(loadPlaylistById));
+      allTracks = lists.flat().filter(t => t.preview);
+      if (!allTracks.length) { infoDiv.textContent = 'No playable tracks found.'; return; }
+      infoDiv.textContent = 'Loaded!';
+      mainControls.style.display = 'block';
+      hintBtn.style.display = 'flex';
+      prepareRound();
+    } catch (err) {
+      infoDiv.textContent = 'Error loading tracks.';
+    }
+  });
+
+  function prepareRound() {
+    currentTrack = allTracks[Math.floor(Math.random()*allTracks.length)];
+    playBtn.disabled = false;
+    hintBtn.disabled = false;
+    revealBtn.disabled = true;
+    nextBtn.disabled = true;
+    infoDiv.textContent = 'Click Play or Hint to start';
+    coverImg.style.display = 'none';
+  }
+
+  playBtn.addEventListener('click', () => playSnippet(1000));
+  hintBtn.addEventListener('click', () => playSnippet(2000));
+
+  function playSnippet(duration) {
+    if (!currentTrack) return;
+    audio.src = currentTrack.preview;
+    audio.currentTime = 0;
+    audio.play().catch(console.error);
+    setTimeout(() => audio.pause(), duration);
+    revealBtn.disabled = false;
+    infoDiv.textContent = 'Guess the song!';
+  }
+
+  revealBtn.addEventListener('click', () => {
+    infoDiv.textContent = `${currentTrack.title_short} — ${currentTrack.artist.name}`;
+    coverImg.src = currentTrack.album.cover_medium;
+    coverImg.style.display = 'block';
+    nextBtn.disabled = false;
+    playBtn.disabled = true;
+    hintBtn.disabled = true;
+  });
+
+  nextBtn.addEventListener('click', () => prepareRound());
+  </script>
+</body>
+</html>
