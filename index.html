@@ -159,7 +159,14 @@
     const url = `${deezerBase}${id}/tracks`;
     return new Promise((resolve, reject) => {
       const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2);
-      window[callbackName] = data => { document.body.removeChild(script); delete window[callbackName]; resolve(data.data); };
+      window[callbackName] = data => {
+        document.body.removeChild(script);
+        delete window[callbackName];
+        if (data.error) {
+          return reject(new Error(data.error.message));
+        }
+        resolve(data.data);
+      };
       const script = document.createElement('script');
       script.src = `${url}?output=jsonp&callback=${callbackName}`;
       script.onerror = () => reject(new Error('JSONP load error'));
