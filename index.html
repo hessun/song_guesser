@@ -102,12 +102,15 @@
       font-size: 1.1rem;
       min-height: 1.2em;
     }
-    #cover {
-      margin: 1rem auto 0;
-      display: none;
-      max-width: 100%;
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    #playlistSelection {
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+    #playlistSelection div {
+      margin-bottom: 0.5rem;
+    }
+    #playlistSelection label {
+      cursor: pointer;
     }
   </style>
 </head>
@@ -119,6 +122,7 @@
     </div>
     <audio id="audio" preload="auto"></audio>
     <div id="controls">
+      <div id="playlistSelection"></div>
       <button id="startBtn" class="general">Start Quiz</button>
       <div id="mainControls">
         <button id="playBtn" class="general" disabled>Play 1s Preview</button>
@@ -133,10 +137,13 @@
 
   <script>
   // === Configuration ===
-  const playlistIds = [
-  '6122724024',
-  '11404387184',
-  '8346956262' 
+  const playlists = [
+    { id: '13382780523', name: 'Songs For Everybody 1940-2020s' },  
+    { id: '10431212082', name: 'Suomi Iskelmä' },
+    { id: '8346956262', name: 'Rock Classics 70s 80s & 90s ' },
+    { id: '7206711884', name: 'James Bond Classics' },
+    { id: '14237766141', name: 'Movies and Series' }
+
   ];
   const deezerBase = 'https://api.deezer.com/playlist/';
 
@@ -145,6 +152,7 @@
   let currentTrack = null;
 
   const audio = document.getElementById('audio');
+  const playlistSelection = document.getElementById('playlistSelection');
   const startBtn = document.getElementById('startBtn');
   const mainControls = document.getElementById('mainControls');
   const playBtn = document.getElementById('playBtn');
@@ -153,6 +161,23 @@
   const nextBtn = document.getElementById('nextBtn');
   const infoDiv = document.getElementById('info');
   const coverImg = document.getElementById('cover');
+
+  function renderPlaylists() {
+    playlists.forEach(playlist => {
+      const div = document.createElement('div');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = playlist.id;
+      checkbox.id = `playlist-${playlist.id}`;
+      checkbox.checked = true;
+      const label = document.createElement('label');
+      label.htmlFor = `playlist-${playlist.id}`;
+      label.textContent = playlist.name;
+      div.appendChild(checkbox);
+      div.appendChild(label);
+      playlistSelection.appendChild(div);
+    });
+  }
 
   function loadPlaylistById(id) {
     const url = `${deezerBase}${id}/tracks`;
@@ -174,19 +199,29 @@
   }
 
   startBtn.addEventListener('click', async () => {
+    const selectedPlaylists = Array.from(playlistSelection.querySelectorAll('input:checked')).map(input => input.value);
+
+    if (selectedPlaylists.length === 0) {
+      infoDiv.textContent = 'Please select at least one playlist.';
+      return;
+    }
+
     startBtn.style.display = 'none';
+    playlistSelection.style.display = 'none';
     infoDiv.textContent = 'Loading tracks...';
     try {
-      const lists = await Promise.all(playlistIds.map(loadPlaylistById));
+      const lists = await Promise.all(selectedPlaylists.map(loadPlaylistById));
       allTracks = lists.flat().filter(t => t.preview);
       pool = [...allTracks];
-      if (!pool.length) { infoDiv.textContent = 'No playable tracks found.'; return; }
+      if (!pool.length) { infoDiv.textContent = 'No playable tracks found in selected playlists.'; startBtn.style.display = 'block'; playlistSelection.style.display = 'block'; return; }
       infoDiv.textContent = 'Loaded!';
       mainControls.style.display = 'block';
       hintBtn.style.display = 'flex';
       prepareRound();
     } catch (err) {
       infoDiv.textContent = 'Error loading tracks.';
+      startBtn.style.display = 'block';
+      playlistSelection.style.display = 'block';
     }
   });
 
@@ -230,6 +265,8 @@
   });
 
   nextBtn.addEventListener('click', () => prepareRound());
+
+  renderPlaylists();
   </script>
 </body>
 </html>
