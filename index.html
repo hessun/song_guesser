@@ -73,15 +73,49 @@
     }
 
     #playlistSelection {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
       width: 100%;
+      margin-bottom: 0.5rem;
     }
 
-    #playlistSelection div {
+    .playlist-card {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .playlist-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .playlist-card input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .playlist-card label {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 0.6rem;
-      padding: 0.4rem 0;
-      font-size: 0.95rem;
+      justify-content: center;
+      padding: 1rem;
+      text-align: center;
+      font-weight: 500;
+      font-size: 0.9rem;
+      height: 100%;
+    }
+
+    .playlist-card input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, #8e2de2, #4a00e0);
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
     }
 
     button.general {
@@ -185,7 +219,7 @@
 
     <img id="cover" alt="Album Cover" />
 
-    <div id="info">Select playlists and start the quiz.</div>
+    <div id="info">Select a playlist and start the quiz.</div>
 
     <div id="controls">
       <div id="playlistSelection"></div>
@@ -260,17 +294,24 @@ const skipFs = document.getElementById('skipFs');
 
 
 function renderPlaylists() {
-  playlists.forEach(p => {
-    const div = document.createElement('div');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = true;
-    cb.value = p.id;
+  playlists.forEach((p, index) => {
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.id = `p-${p.id}`;
+    radio.name = 'playlist';
+    radio.value = p.id;
+    if (index === 0) radio.checked = true;
+
     const label = document.createElement('label');
+    label.htmlFor = `p-${p.id}`;
     label.textContent = p.name;
-    div.appendChild(cb);
-    div.appendChild(label);
-    playlistSelection.appendChild(div);
+
+    card.appendChild(radio);
+    card.appendChild(label);
+    playlistSelection.appendChild(card);
   });
 }
 
@@ -306,23 +347,22 @@ function resetToMenu() {
   hintBtn.style.display = 'none';
   coverImg.classList.remove('show');
 
-  playlistSelection.style.display = 'block';
+  playlistSelection.style.display = 'grid';
   startBtn.style.display = 'block';
 
   audio.pause();
-  infoDiv.textContent = 'Select playlists and start the quiz.';
+  infoDiv.textContent = 'Select a playlist and start the quiz.';
 }
 
 startBtn.onclick = async () => {
-  const selected = [...playlistSelection.querySelectorAll('input:checked')].map(i => i.value);
-  if (!selected.length) return infoDiv.textContent = 'Select at least one playlist.';
+  const selected = playlistSelection.querySelector('input:checked');
+  if (!selected) return infoDiv.textContent = 'Select a playlist.';
 
   playlistSelection.style.display = 'none';
   startBtn.style.display = 'none';
   infoDiv.textContent = 'Loading tracks...';
 
-  const lists = await Promise.all(selected.map(loadPlaylistById));
-  allTracks = lists.flat().filter(t => t.preview);
+  allTracks = await loadPlaylistById(selected.value);
   pool = [...allTracks];
 
   mainControls.style.display = 'block';
