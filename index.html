@@ -58,10 +58,13 @@
     }
 
     #info {
-      min-height: 1.4em;
+      height: 2.8em;
       font-weight: 500;
       text-align: center;
       opacity: 0.9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #controls {
@@ -254,6 +257,7 @@ const playlists = [
 ];
 
 const deezerBase = 'https://api.deezer.com/playlist/';
+const placeholderCover = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3e%3crect width='220' height='220' fill='%232a2a3e'/%3e%3ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Roboto, sans-serif' font-size='120' fill='rgba(255,255,255,0.2)'%3e?%3c/text%3e%3c/svg%3e";
 
 let allTracks = [];
 let pool = [];
@@ -409,7 +413,8 @@ function prepareRound() {
   revealBtn.disabled = true;
   nextBtn.disabled = true;
 
-  coverImg.classList.remove('show');
+  coverImg.src = placeholderCover;
+  coverImg.classList.add('show');
   infoDiv.textContent = 'Play the preview and guess!';
 }
 
