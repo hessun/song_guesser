@@ -207,19 +207,31 @@ function renderPlaylists() {
   });
 }
 
-function loadPlaylistById(id) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'jsonp_' + Math.random().toString(36).slice(2);
-    window[cbName] = data => {
-      delete window[cbName];
-      script.remove();
-      if (data.error) reject(data.error);
-      else resolve(data.data);
-    };
-    const script = document.createElement('script');
-    script.src = `${deezerBase}${id}/tracks?output=jsonp&callback=${cbName}`;
-    document.body.appendChild(script);
-  });
+async function loadPlaylistById(id) {
+  let allTracks = [];
+  let url = `${deezerBase}${id}/tracks?output=jsonp`;
+
+  const fetchData = (fetchUrl) => {
+    return new Promise((resolve, reject) => {
+      const cbName = 'jsonp_' + Math.random().toString(36).slice(2);
+      window[cbName] = data => {
+        delete window[cbName];
+        script.remove();
+        if (data.error) reject(data.error);
+        else resolve(data);
+      };
+      const script = document.createElement('script');
+      script.src = `${fetchUrl}&callback=${cbName}`;
+      document.body.appendChild(script);
+    });
+  };
+
+  while (url) {
+    const data = await fetchData(url);
+    allTracks = allTracks.concat(data.data);
+    url = data.next ? data.next + '&output=jsonp' : null;
+  }
+  return allTracks;
 }
 
 function resetToMenu() {
