@@ -297,20 +297,13 @@ const skipFs = document.getElementById('skipFs');
 function handlePlaylistSelection(id) {
   currentPlaylistId = id;
   if (loadedPlaylists[id]) {
-    infoDiv.textContent = 'Playlist ready. Press Start!';
-  } else {
-    infoDiv.textContent = 'Loading playlist...';
-    loadingPlaylist = true;
-    startBtn.disabled = true;
-    loadPlaylistById(id).then(tracks => {
-      loadedPlaylists[id] = tracks;
-      loadingPlaylist = false;
-      if (id === currentPlaylistId) {
-          startBtn.disabled = false;
-          infoDiv.textContent = 'Playlist loaded. Press Start!';
-      }
-    });
+    return;
   }
+  loadingPlaylist = true;
+  loadPlaylistById(id).then(tracks => {
+    loadedPlaylists[id] = tracks;
+    loadingPlaylist = false;
+  });
 }
 
 function renderPlaylists() {
@@ -377,30 +370,28 @@ function resetToMenu() {
 
   audio.pause();
   infoDiv.textContent = 'Select a playlist and start the quiz.';
-  const selected = playlistSelection.querySelector('input:checked');
-  if (selected) {
-      handlePlaylistSelection(selected.value);
-  }
 }
 
 startBtn.onclick = async () => {
-  if (loadingPlaylist) {
-    infoDiv.textContent = 'Still loading, please wait...';
-    return;
-  }
+  playlistSelection.style.display = 'none';
+  startBtn.style.display = 'none';
+  infoDiv.textContent = 'Loading tracks...';
 
   const selectedId = playlistSelection.querySelector('input:checked').value;
+
+  while (loadingPlaylist || !loadedPlaylists[selectedId]) {
+    await new Promise(res => setTimeout(res, 100));
+  }
+
   allTracks = loadedPlaylists[selectedId];
-  
+
   if (!allTracks) {
       infoDiv.textContent = 'Error: Playlist not loaded.';
+      resetToMenu();
       return;
   }
 
   pool = [...allTracks];
-
-  playlistSelection.style.display = 'none';
-  startBtn.style.display = 'none';
 
   mainControls.style.display = 'block';
   hintBtn.style.display = 'flex';
