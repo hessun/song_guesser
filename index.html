@@ -258,6 +258,9 @@ const deezerBase = 'https://api.deezer.com/playlist/';
 let allTracks = [];
 let pool = [];
 let currentTrack = null;
+const loadedPlaylists = {};
+let currentPlaylistId = null;
+let loadingPlaylist = false;
 
 const audio = document.getElementById('audio');
 const playlistSelection = document.getElementById('playlistSelection');
@@ -291,7 +294,24 @@ const skipFs = document.getElementById('skipFs');
     fsPrompt.remove();
   };
 
-
+function handlePlaylistSelection(id) {
+  currentPlaylistId = id;
+  if (loadedPlaylists[id]) {
+    infoDiv.textContent = 'Playlist ready. Press Start!';
+  } else {
+    infoDiv.textContent = 'Loading playlist...';
+    loadingPlaylist = true;
+    startBtn.disabled = true;
+    loadPlaylistById(id).then(tracks => {
+      loadedPlaylists[id] = tracks;
+      loadingPlaylist = false;
+      if (id === currentPlaylistId) {
+          startBtn.disabled = false;
+          infoDiv.textContent = 'Playlist loaded. Press Start!';
+      }
+    });
+  }
+}
 
 function renderPlaylists() {
   playlists.forEach((p, index) => {
@@ -303,7 +323,12 @@ function renderPlaylists() {
     radio.id = `p-${p.id}`;
     radio.name = 'playlist';
     radio.value = p.id;
-    if (index === 0) radio.checked = true;
+    radio.onchange = () => handlePlaylistSelection(p.id);
+
+    if (index === 0) {
+      radio.checked = true;
+      handlePlaylistSelection(p.id);
+    }
 
     const label = document.createElement('label');
     label.htmlFor = `p-${p.id}`;
@@ -339,7 +364,7 @@ async function loadPlaylistById(id) {
     allTracks = allTracks.concat(data.data);
     url = data.next ? data.next + '&output=jsonp' : null;
   }
-  return allTracks;
+  return allTracks.filter(t => t.preview);
 }
 
 function resetToMenu() {
@@ -352,18 +377,30 @@ function resetToMenu() {
 
   audio.pause();
   infoDiv.textContent = 'Select a playlist and start the quiz.';
+  const selected = playlistSelection.querySelector('input:checked');
+  if (selected) {
+      handlePlaylistSelection(selected.value);
+  }
 }
 
 startBtn.onclick = async () => {
-  const selected = playlistSelection.querySelector('input:checked');
-  if (!selected) return infoDiv.textContent = 'Select a playlist.';
+  if (loadingPlaylist) {
+    infoDiv.textContent = 'Still loading, please wait...';
+    return;
+  }
+
+  const selectedId = playlistSelection.querySelector('input:checked').value;
+  allTracks = loadedPlaylists[selectedId];
+  
+  if (!allTracks) {
+      infoDiv.textContent = 'Error: Playlist not loaded.';
+      return;
+  }
+
+  pool = [...allTracks];
 
   playlistSelection.style.display = 'none';
   startBtn.style.display = 'none';
-  infoDiv.textContent = 'Loading tracks...';
-
-  allTracks = await loadPlaylistById(selected.value);
-  pool = [...allTracks];
 
   mainControls.style.display = 'block';
   hintBtn.style.display = 'flex';
